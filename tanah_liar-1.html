@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>TANAH LIAR — Bertahan &amp; Kuasai Wilayah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-void:#0a0f0a;
+    --panel:#1c1712;
+    --panel-2:#241c15;
+    --panel-border:#4a3826;
+    --wood-light:#5c4530;
+    --accent-fire:#e8823c;
+    --accent-fire-dim:#a85a2a;
+    --text-main:#e9e2d0;
+    --text-dim:#9c927c;
+    --hp:#7a9b4e;
+    --hp-low:#c0392b;
+    --stam:#d9b44a;
+    --hunger:#c47a3a;
+    --territory:#5a8a5a;
+    --danger:#c0392b;
+    --font-display:'Rye', serif;
+    --font-mono:'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:var(--bg-void);font-family:var(--font-mono);color:var(--text-main);user-select:none;}
+  #game{display:block;width:100%;height:100%;image-rendering:pixelated;background:#0e130d;}
+
+  .plank-panel{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:2px solid var(--panel-border);
+    clip-path:polygon(0% 6px,6px 0%,calc(100% - 6px) 0%,100% 6px,100% calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,0% calc(100% - 6px));
+    box-shadow:0 3px 10px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+
+  /* ===== HUD TOP LEFT: STATS ===== */
+  #stats{
+    position:fixed; top:10px; left:10px; padding:10px 14px; width:230px; z-index:20;
+  }
+  .bar-row{margin-bottom:6px;}
+  .bar-label{display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim); letter-spacing:.05em; margin-bottom:2px;}
+  .bar-track{width:100%; height:10px; background:#0d0a07; border:1px solid #000; border-radius:2px; overflow:hidden; position:relative;}
+  .bar-fill{height:100%; transition:width .15s linear;}
+  .bar-fill.hp{background:linear-gradient(90deg,var(--hp),#5e7d3a);}
+  .bar-fill.hp.low{background:linear-gradient(90deg,var(--hp-low),#8a2418);}
+  .bar-fill.stam{background:linear-gradient(90deg,var(--stam),#a8842f);}
+  .bar-fill.hunger{background:linear-gradient(90deg,var(--hunger),#8a5222);}
+  .bar-fill.xp{background:linear-gradient(90deg,var(--accent-fire),var(--accent-fire-dim));}
+  #lvl-badge{font-family:var(--font-display); color:var(--accent-fire); font-size:15px;}
+
+  /* ===== HUD TOP RIGHT: COORD + MINIMAP ===== */
+  #coordbox{
+    position:fixed; top:10px; right:10px; width:190px; z-index:20; padding:8px 12px;
+    text-align:right;
+  }
+  #coordbox .row{font-size:11px; color:var(--text-dim); display:flex; justify-content:space-between; gap:8px;}
+  #coordbox .row b{color:var(--text-main); font-weight:700;}
+  #clock{font-family:var(--font-display); font-size:16px; color:var(--accent-fire); margin-top:2px;}
+
+  #minimap-wrap{position:fixed; top:150px; right:10px; z-index:20;}
+  #minimap{display:block; border:2px solid var(--panel-border); background:#0d1410; border-radius:50%;}
+  .compass-n{position:absolute; top:-16px; left:50%; transform:translateX(-50%); font-size:10px; color:var(--accent-fire); font-weight:700;}
+
+  /* ===== BOTTOM INVENTORY ===== */
+  #invbar{
+    position:fixed; bottom:10px; left:50%; transform:translateX(-50%); z-index:20;
+    display:flex; gap:6px; padding:8px 10px;
+  }
+  .slot{width:46px;height:46px; background:#0d0a07; border:1px solid #000; border-radius:4px; position:relative; display:flex; align-items:center; justify-content:center; font-size:20px;}
+  .slot .count{position:absolute; bottom:1px; right:3px; font-size:10px; color:var(--text-main); background:rgba(0,0,0,.6); padding:0 3px; border-radius:2px;}
+  .slot .wlabel{position:absolute; top:-14px; font-size:8px; color:var(--text-dim); white-space:nowrap;}
+  .slot .dropBtn, .slot .dropAllBtn{position:absolute; top:-4px; width:15px; height:15px; border-radius:50%; border:1px solid #000; font-size:10px; line-height:1; cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; font-weight:700;}
+  .slot .dropBtn{left:-4px; background:#4a4030; color:var(--text-main);}
+  .slot .dropAllBtn{right:-4px; background:var(--danger); color:#fff;}
+
+  /* ===== TOMBOL & RODA SENJATA ===== */
+  #weaponBtn{
+    position:fixed; top:10px; left:250px; z-index:21;
+    width:56px; height:56px; padding:4px; text-align:center;
+    background:linear-gradient(180deg,var(--panel-2),var(--panel)); border:2px solid var(--panel-border);
+    color:var(--text-main); font-size:16px; cursor:pointer; border-radius:50%; line-height:1.1;
+  }
+  @media (max-width:600px){
+    #weaponBtn{ top:auto; left:auto; bottom:86px; right:14px; }
+  }
+  #weaponBtn span{font-size:8px; color:var(--text-dim); display:block; margin-top:1px;}
+  #weaponWheel{
+    position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+    background:rgba(4,6,4,.78);
+  }
+  #weaponWheel.open{display:flex;}
+  #weaponWheelInner{position:relative; width:240px; height:240px; border-radius:50%; border:2px dashed rgba(233,226,208,.3);}
+  #weaponWheelCenter{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:70px; height:70px; border-radius:50%; background:var(--panel); border:2px solid var(--panel-border);
+    display:flex; align-items:center; justify-content:center; text-align:center; font-family:var(--font-display);
+    color:var(--accent-fire); font-size:11px; line-height:1.2;
+  }
+  .wheelOption{
+    position:absolute; width:64px; height:64px; border-radius:50%; cursor:pointer;
+    background:var(--panel); border:2px solid var(--accent-fire-dim); color:var(--text-main);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:20px;
+  }
+  .wheelOption span{font-size:8px; color:var(--text-dim); margin-top:2px;}
+  .wheelOption.active{background:var(--accent-fire); border-color:#fff; color:#241407;}
+  .wheelOption.active span{color:#241407;}
+  .wheelOption.locked{opacity:.35; cursor:not-allowed;}
+
+  /* ===== HINTS ===== */
+  #hints{position:fixed; bottom:66px; left:50%; transform:translateX(-50%); z-index:20; font-size:10px; color:var(--text-dim); text-align:center; white-space:nowrap;}
+  #hints b{color:var(--accent-fire);}
+
+  /* ===== LOG ===== */
+  #log{position:fixed; bottom:120px; left:10px; z-index:20; width:280px; max-height:120px; display:flex; flex-direction:column-reverse; gap:2px; pointer-events:none;}
+  #log div{font-size:10px; color:var(--text-main); background:rgba(20,16,12,.75); padding:3px 8px; border-left:2px solid var(--accent-fire); opacity:0; animation:fadein .3s forwards;}
+  @keyframes fadein{ to{opacity:1;} }
+
+  /* ===== HARVEST PROGRESS ===== */
+  #harvestbar{position:fixed; left:50%; top:60%; transform:translateX(-50%); width:120px; height:8px; background:#0d0a07; border:1px solid #000; z-index:25; display:none;}
+  #harvestbar div{height:100%; background:var(--accent-fire); width:0%;}
+
+  /* ===== CRAFTING MENU ===== */
+  #craftMenu{position:fixed; inset:0; background:rgba(4,6,4,.75); z-index:40; display:none; align-items:center; justify-content:center;}
+  #craftPanel{width:min(560px,92vw); max-height:80vh; overflow:auto; padding:20px;}
+  #craftPanel h2{font-family:var(--font-display); color:var(--accent-fire); margin:0 0 4px; font-size:22px; letter-spacing:.03em;}
+  #craftPanel p.sub{color:var(--text-dim); font-size:11px; margin:0 0 14px;}
+  .recipe{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 8px; border-bottom:1px solid var(--panel-border);}
+  .recipe:last-child{border-bottom:none;}
+  .recipe .rname{font-weight:700; font-size:13px;}
+  .recipe .rcost{font-size:10px; color:var(--text-dim);}
+  .recipe button{font-family:var(--font-mono); font-weight:700; font-size:11px; padding:8px 14px; background:var(--accent-fire); color:#241407; border:none; border-radius:3px; cursor:pointer;}
+  .recipe button:disabled{background:#3a352b; color:#6a6455; cursor:not-allowed;}
+  .recipe.owned button{background:#3a4a2f; color:#c8dcae;}
+  #closeCraft{position:absolute; top:10px; right:16px; font-size:20px; color:var(--text-dim); background:none; border:none; cursor:pointer;}
+
+  /* ===== START / GAMEOVER ===== */
+  #overlay{position:fixed; inset:0; background:radial-gradient(ellipse at center,#1a2414 0%, #05070a 80%); z-index:100; display:flex; align-items:center; justify-content:center; flex-direction:column; text-align:center; padding:20px;}
+  #overlay h1{font-family:var(--font-display); font-size:clamp(32px,8vw,58px); color:var(--accent-fire); margin:0; text-shadow:0 3px 0 #000;}
+  #overlay .tagline{color:var(--text-dim); font-size:13px; margin-top:6px; max-width:520px;}
+  #overlay .info-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:26px 0; max-width:560px; text-align:left;}
+  #overlay .info-card{padding:12px 14px;}
+  #overlay .info-card h3{margin:0 0 4px; font-size:12px; color:var(--accent-fire); letter-spacing:.05em;}
+  #overlay .info-card p{margin:0; font-size:11px; color:var(--text-dim); line-height:1.5;}
+  #startBtn, #restartBtn{font-family:var(--font-display); font-size:20px; padding:12px 38px; background:var(--accent-fire); color:#241407; border:none; cursor:pointer; letter-spacing:.04em; box-shadow:0 4px 0 var(--accent-fire-dim);}
+  #startBtn:active, #restartBtn:active{transform:translateY(3px); box-shadow:none;}
+  #overlay.hidden{display:none;}
+
+  /* ===== TOUCH CONTROLS ===== */
+  #touchControls{position:fixed; inset:0; pointer-events:none; z-index:30; display:none;}
+  #joyBase{position:absolute; left:26px; bottom:26px; width:110px; height:110px; border-radius:50%; background:rgba(233,226,208,.08); border:2px solid rgba(233,226,208,.25); pointer-events:auto;}
+  #joyStick{position:absolute; left:35px; top:35px; width:40px; height:40px; border-radius:50%; background:rgba(232,130,60,.55); border:2px solid var(--accent-fire);}
+  .tbtn{position:absolute; width:60px; height:60px; border-radius:50%; background:rgba(233,226,208,.1); border:2px solid rgba(233,226,208,.3); color:var(--text-main); font-size:10px; display:flex; align-items:center; justify-content:center; pointer-events:auto; font-weight:700;}
+  #btnAttack{right:30px; bottom:96px; background:rgba(192,57,43,.35); border-color:var(--danger);}
+  #btnHarvest{right:100px; bottom:36px; background:rgba(232,130,60,.35);}
+  #btnCraft{right:30px; bottom:26px;}
+  #btnEat{right:170px; bottom:26px; width:46px;height:46px;font-size:9px;}
+
+  ::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-thumb{background:var(--panel-border);}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="stats" class="plank-panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+    <span id="lvl-badge">Lv. 1</span>
+    <span style="font-size:10px;color:var(--text-dim);" id="xp-label">0/40 XP</span>
+  </div>
+  <div class="bar-row"><div class="bar-track"><div class="bar-fill xp" id="bar-xp" style="width:0%"></div></div></div>
+  <div class="bar-row">
+    <div class="bar-label"><span>NYAWA</span><span id="hp-text">100/100</span></div>
+    <div class="bar-track"><div class="bar-fill hp" id="bar-hp" style="width:100%"></div></div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label"><span>STAMINA</span><span id="stam-text">100/100</span></div>
+    <div class="bar-track"><div class="bar-fill stam" id="bar-stam" style="width:100%"></div></div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label"><span>LAPAR</span><span id="hunger-text">100</span></div>
+    <div class="bar-track"><div class="bar-fill hunger" id="bar-hunger" style="width:100%"></div></div>
+  </div>
+  <div class="bar-label" style="margin-top:4px;"><span>BEBAN BAWAAN</span><span id="weight-text">0.0/25.0 kg</span></div>
+</div>
+
+<div id="coordbox" class="plank-panel">
+  <div id="clock">Hari 1 · 06:00</div>
+  <div class="row"><span>Posisi X</span><b id="posx">0.0 m</b></div>
+  <div class="row"><span>Posisi Y</span><b id="posy">0.0 m</b></div>
+  <div class="row"><span>Chunk</span><b id="poschunk">(0, 0)</b></div>
+  <div class="row"><span>Wilayah</span><b id="terrinfo">0 pos</b></div>
+</div>
+
+<div id="minimap-wrap">
+  <div class="compass-n">U</div>
+  <canvas id="minimap" width="150" height="150"></canvas>
+</div>
+
+<div id="log"></div>
+
+<div id="harvestbar" class="plank-panel"><div id="harvestfill"></div></div>
+
+<div id="invbar" class="plank-panel"></div>
+
+<button id="weaponBtn" class="plank-panel">🗡️<br><span id="weaponBtnLabel">Tangan</span></button>
+
+<div id="weaponWheel">
+  <div id="weaponWheelInner">
+    <div id="weaponWheelCenter">PILIH<br>SENJATA</div>
+  </div>
+</div>
+
+<div id="hints">
+  <b>WASD</b> gerak · <b>Shift</b> lari · <b>E</b> kumpulkan · <b>Spasi</b> serang · <b>C</b> crafting · <b>F</b> pos wilayah · <b>Q</b> makan · klik <b>🗡️</b> pilih senjata · klik <b>✕</b> pada barang untuk membuang
+</div>
+
+<div id="craftMenu">
+  <div id="craftPanel" class="plank-panel">
+    <button id="closeCraft">✕</button>
+    <h2>MEJA KERJA</h2>
+    <p class="sub">Buat alat, senjata, dan bangunan dari sumber daya hasil looting.</p>
+    <div id="recipeList"></div>
+  </div>
+</div>
+
+<div id="overlay">
+  <h1>TANAH LIAR</h1>
+  <p class="tagline">Jelajahi hamparan liar tanpa batas, kumpulkan sumber daya, hadapi hewan buas &amp; perampok, lalu bangun serta luaskan wilayahmu sendiri.</p>
+  <div class="info-grid">
+    <div class="info-card plank-panel"><h3>FISIKA GERAK</h3><p>Kecepatan dibangun lewat akselerasi &amp; gesekan — bukan instan. Beban bawaan yang berlebih memperlambatmu secara nyata.</p></div>
+    <div class="info-card plank-panel"><h3>STAMINA &amp; LAPAR</h3><p>Lari menguras stamina lebih cepat saat kau kelebihan beban. Rasa lapar yang tak terurus mengurangi regenerasi nyawa.</p></div>
+    <div class="info-card plank-panel"><h3>LOOTING NYATA</h3><p>Setiap pohon, batu, dan hewan butuh waktu untuk dipanen — alat yang tepat mempercepat prosesnya.</p></div>
+    <div class="info-card plank-panel"><h3>WILAYAH TANPA BATAS</h3><p>Dunia dibangkitkan tanpa akhir dari benih acak. Koordinat &amp; peta mini menjagamu tetap tahu arah.</p></div>
+  </div>
+  <button id="startBtn">MULAI BERTAHAN HIDUP</button>
+</div>
+
+<div id="touchControls">
+  <div id="joyBase"><div id="joyStick"></div></div>
+  <div class="tbtn" id="btnHarvest">KUMPUL<br>(E)</div>
+  <div class="tbtn" id="btnAttack">SERANG<br>(SPASI)</div>
+  <div class="tbtn" id="btnCraft">RAKIT<br>(C)</div>
+  <div class="tbtn" id="btnEat">MAKAN<br>(Q)</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   TANAH LIAR — game survival/territory infinite-world
+   Semua satuan fisika memakai meter (m) & detik (s). 1 meter = TILE piksel.
+   ========================================================================= */
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const minimap = document.getElementById('minimap');
+const mctx = minimap.getContext('2d');
+
+function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize); resize();
+
+const TILE = 34;          // px per meter (render scale)
+const CHUNK_M = 20;       // meter per sisi chunk
+const RENDER_RADIUS_CHUNKS = 3; // radius chunk yang disimulasikan/di-render
+const MAX_ENEMIES = 22;
+
+/* ===================== UTIL: NOISE & RNG DETERMINISTIK ===================== */
+function hash2(x,y){
+  let n = (x*374761393 + y*668265263) | 0;
+  n = Math.imul(n ^ (n>>>13), 1274126177);
+  n = n ^ (n>>>16);
+  return ((n>>>0) % 1000000) / 1000000;
+}
+function fade(t){ return t*t*t*(t*(t*6-15)+10); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function valueNoise(x,y){
+  const x0=Math.floor(x), y0=Math.floor(y);
+  const xf=x-x0, yf=y-y0;
+  const n00=hash2(x0,y0), n10=hash2(x0+1,y0), n01=hash2(x0,y0+1), n11=hash2(x0+1,y0+1);
+  const u=fade(xf), v=fade(yf);
+  return lerp(lerp(n00,n10,u), lerp(n01,n11,u), v);
+}
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function chunkSeed(cx,cy){ return (hash2(cx*92837.1, cy*12841.7)*4294967296) >>> 0; }
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+function norm(x,y){ const l=Math.hypot(x,y); return l<1e-6? {x:0,y:0} : {x:x/l, y:y/l}; }
+function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
+function randInt(a,b){ return a + Math.floor(Math.random()*(b-a+1)); }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+/* ===================== AUDIO SEDERHANA (WebAudio synth) ===================== */
+let actx = null;
+function playTone(freq, dur, type){
+  try{
+    if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = actx.createOscillator(); const g = actx.createGain();
+    o.type = type==='hit'?'square': type==='levelup'?'triangle': type==='loot'?'sine':'sawtooth';
+    o.frequency.value = freq;
+    g.gain.value = 0.06;
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime+dur);
+  }catch(e){}
+}
+
+/* ===================== DEFINISI SUMBER DAYA & BOBOT ===================== */
+const RESOURCE_DEF = {
+  pohon:  { hasil:'kayu',  jumlah:[2,4], waktu:1.6, hp:3, nama:'Pohon',        biome:['hutan','padang'] },
+  batu:   { hasil:'batu',  jumlah:[2,3], waktu:1.9, hp:3, nama:'Batu Besar',   biome:['berbatu'] },
+  bijih:  { hasil:'bijih', jumlah:[1,2], waktu:2.6, hp:2, nama:'Bijih Logam',  biome:['berbatu'] },
+  semak:  { hasil:'serat', jumlah:[1,3], waktu:0.8, hp:2, nama:'Semak Serat',  biome:['padang','hutan','rawa'] },
+  herba:  { hasil:'herba', jumlah:[1,2], waktu:1.0, hp:2, nama:'Herbal Liar',  biome:['rawa'] },
+};
+const NODE_ICON = { pohon:'🌲', batu:'🪨', bijih:'⛏️', semak:'🌾', herba:'🌿' };
+const WEIGHT = { kayu:1, batu:2, bijih:2.5, serat:0.2, herba:0.15, daging:0.5, dagingMasak:0.5, kulit:1, koin:0.02 };
+const RESOURCE_ORDER = ['kayu','batu','bijih','serat','herba','daging','dagingMasak','kulit','koin'];
+const RES_ICON = { kayu:'🪵', batu:'🪨', bijih:'⛏️', serat:'🧵', herba:'🌿', daging:'🥩', dagingMasak:'🍖', kulit:'🧶', koin:'🪙' };
+const RESPAWN_TIME = 210; // detik node berespawn setelah habis
+
+/* ===================== DEFINISI HEWAN / MUSUH ===================== */
+const ENEMY_DEF = {
+  kelinci:  { hp:10, speed:4.6, dmg:0,  detect:6,  atkRange:0,   cd:0,   passive:true,  loot:{daging:[1,1]},              xp:4,  warna:'#c9b38a', r:0.32 },
+  rusa:     { hp:20, speed:4.2, dmg:0,  detect:7,  atkRange:0,   cd:0,   passive:true,  loot:{daging:[2,3],kulit:[1,1]},  xp:9,  warna:'#a9835a', r:0.42 },
+  serigala: { hp:28, speed:5.1, dmg:9,  detect:9,  atkRange:1.1, cd:0.9, passive:false, loot:{daging:[1,2],kulit:[1,1]},  xp:17, warna:'#8a8a8a', r:0.38, knock:5, pack:true },
+  beruang:  { hp:90, speed:2.9, dmg:23, detect:6,  atkRange:1.5, cd:1.35,passive:false, loot:{daging:[3,5],kulit:[2,3]},  xp:42, warna:'#4a3320', r:0.62, knock:9 },
+  penjarah: { hp:44, speed:3.6, dmg:13, detect:10, atkRange:1.2, cd:1.0, passive:false, loot:{koin:[5,18],serat:[0,3]},   xp:31, warna:'#7a3030', r:0.4,  knock:4, ranged:true },
+};
+const BIOME_HOSTILE = {
+  hutan:  { chance:0.5,  types:['serigala','serigala','beruang'] },
+  padang: { chance:0.22, types:['penjarah'] },
+  berbatu:{ chance:0.45, types:['beruang','penjarah'] },
+  rawa:   { chance:0.6,  types:['serigala','penjarah'] },
+};
+const BIOME_PASSIVE = {
+  hutan:['rusa','kelinci'], padang:['kelinci','rusa'], berbatu:['kelinci'], rawa:['kelinci'],
+};
+
+/* ===================== ALAT & RESEP CRAFTING ===================== */
+const TOOL_DEF = {
+  tangan:  { nama:'Tangan Kosong', dmg:5,  harvestMult:1,   range:1.05 },
+  kapak:   { nama:'Kapak',         dmg:9,  harvestMult:1.9, range:1.1, boost:'kayu' },
+  beliung: { nama:'Beliung',       dmg:8,  harvestMult:1.9, range:1.1, boost:'batu' },
+  tombak:  { nama:'Tombak',        dmg:17, harvestMult:1.1, range:1.65 },
+};
+const RECIPES = [
+  { id:'kapak',   nama:'Kapak',            cost:{kayu:6, batu:3},          type:'tool' },
+  { id:'beliung', nama:'Beliung',          cost:{kayu:6, batu:5},          type:'tool' },
+  { id:'tombak',  nama:'Tombak',           cost:{kayu:5, batu:2, serat:2}, type:'tool' },
+  { id:'apiUnggun', nama:'Api Unggun',     cost:{kayu:8, batu:5},          type:'struct' },
+  { id:'pos',     nama:'Pos Wilayah',      cost:{kayu:12, batu:12},        type:'struct' },
+];
+
+/* ===================== BIOME ===================== */
+function getBiome(cx,cy){
+  const n = valueNoise(cx/5+1000, cy/5+1000);
+  if(n < 0.32) return 'hutan';
+  if(n < 0.58) return 'padang';
+  if(n < 0.80) return 'berbatu';
+  return 'rawa';
+}
+const BIOME_COLOR = { hutan:'#1e2d16', padang:'#2a3318', berbatu:'#2b2620', rawa:'#1a2620' };
+const BIOME_DECOR_COLOR = { hutan:'#33481f', padang:'#3c4620', berbatu:'#3a332a', rawa:'#243a30' };
+const BIOME_NAME = { hutan:'Hutan Lebat', padang:'Padang Rumput', berbatu:'Dataran Berbatu', rawa:'Rawa Liar' };
+
+/* ===================== STATE DUNIA ===================== */
+const world = { chunks: new Map() };
+function chunkKey(cx,cy){ return cx+','+cy; }
+function getOrGenChunk(cx,cy){
+  const key = chunkKey(cx,cy);
+  let c = world.chunks.get(key);
+  if(c) return c;
+  const biome = getBiome(cx,cy);
+  const rng = mulberry32(chunkSeed(cx,cy));
+  const nodes = [];
+  const types = Object.keys(RESOURCE_DEF).filter(t=>RESOURCE_DEF[t].biome.includes(biome));
+  const density = { hutan:11, padang:5, berbatu:8, rawa:4 }[biome];
+  const count = density + Math.floor(rng()*4);
+  for(let i=0;i<count;i++){
+    const type = pick2(types, rng);
+    nodes.push({
+      id:key+'_'+i, type,
+      x: cx*CHUNK_M + rng()*CHUNK_M,
+      y: cy*CHUNK_M + rng()*CHUNK_M,
+      hpMax: RESOURCE_DEF[type].hp, hp: RESOURCE_DEF[type].hp,
+      depleted:false, depletedAt:0,
+    });
+  }
+  const decor = [];
+  for(let i=0;i<14;i++){
+    decor.push({ x: cx*CHUNK_M+rng()*CHUNK_M, y: cy*CHUNK_M+rng()*CHUNK_M, r: 1+rng()*2 });
+  }
+  const spawners = [];
+  const hostileInfo = BIOME_HOSTILE[biome];
+  if(rng() < hostileInfo.chance){
+    spawners.push({ x: cx*CHUNK_M+rng()*CHUNK_M, y: cy*CHUNK_M+rng()*CHUNK_M });
+  }
+  c = { cx, cy, biome, nodes, decor, spawners, lastHostileTick:0, lastPassiveTick:0 };
+  world.chunks.set(key, c);
+  return c;
+}
+function pick2(arr, rng){ return arr[Math.floor(rng()*arr.length)]; }
+function chunkOf(v){ return Math.floor(v/CHUNK_M); }
+
+/* ===================== PLAYER ===================== */
+const player = {
+  x:0, y:0, vx:0, vy:0, facing:{x:0,y:1},
+  level:1, xp:0, xpNext:40,
+  hpMax:100, hp:100,
+  stamMax:100, stam:100,
+  hunger:100,
+  tool:'tangan',
+  inv:{kayu:0,batu:0,bijih:0,serat:0,herba:0,daging:0,dagingMasak:0,kulit:0,koin:0},
+  owned:{tangan:true, kapak:false, beliung:false, tombak:false},
+  attackCooldown:0,
+  lastDamageTime:-999,
+  dead:false,
+  daysSurvived:0,
+};
+function capacity(){ return 25 + (player.level-1)*2.5; }
+function totalWeight(){
+  let w=0; for(const k in player.inv) w += player.inv[k]*(WEIGHT[k]||0); return w;
+}
+function nearestPostBonus(x,y){
+  for(const p of posts){ if(dist(p,{x,y}) < p.radius) return true; }
+  return false;
+}
+
+/* ===================== ENTITAS DINAMIS ===================== */
+let enemies = [];
+let projectiles = [];
+let posts = [];         // pos wilayah milik pemain
+let structures = [];    // api unggun dll
+let floatTexts = [];
+let entityIdCounter = 1;
+
+/* ===================== INPUT ===================== */
+const keys = { up:false, down:false, left:false, right:false, sprint:false, interact:false };
+let attackQueued = false;
+let touchVec = {x:0,y:0};
+
+window.addEventListener('keydown', e=>{
+  if(e.repeat) return;
+  switch(e.code){
+    case 'KeyW': case 'ArrowUp': keys.up=true; break;
+    case 'KeyS': case 'ArrowDown': keys.down=true; break;
+    case 'KeyA': case 'ArrowLeft': keys.left=true; break;
+    case 'KeyD': case 'ArrowRight': keys.right=true; break;
+    case 'ShiftLeft': case 'ShiftRight': keys.sprint=true; break;
+    case 'KeyE': keys.interact=true; break;
+    case 'Space': attackQueued=true; e.preventDefault(); break;
+    case 'KeyC': toggleCraft(); break;
+    case 'KeyF': placePost(); break;
+    case 'KeyQ': eatFood(); break;
+    case 'Digit1': switchTool('tangan'); break;
+    case 'Digit2': switchTool('kapak'); break;
+    case 'Digit3': switchTool('beliung'); break;
+    case 'Digit4': switchTool('tombak'); break;
+  }
+});
+window.addEventListener('keyup', e=>{
+  switch(e.code){
+    case 'KeyW': case 'ArrowUp': keys.up=false; break;
+    case 'KeyS': case 'ArrowDown': keys.down=false; break;
+    case 'KeyA': case 'ArrowLeft': keys.left=false; break;
+    case 'KeyD': case 'ArrowRight': keys.right=false; break;
+    case 'ShiftLeft': case 'ShiftRight': keys.sprint=false; break;
+    case 'KeyE': keys.interact=false; break;
+  }
+});
+function switchTool(t){
+  if(!player.owned[t]) { log(`Kau belum memiliki ${TOOL_DEF[t].nama}.`); return; }
+  player.tool = t; log(`Alat aktif: ${TOOL_DEF[t].nama}`);
+  document.getElementById('weaponBtnLabel').textContent = TOOL_DEF[t].nama;
+}
+
+/* ===== Roda pilihan senjata (popup bulat) ===== */
+const WEAPON_ICON = { tangan:'✊', kapak:'🪓', beliung:'⛏️', tombak:'🔱' };
+function openWeaponWheel(){
+  const inner = document.getElementById('weaponWheelInner');
+  inner.querySelectorAll('.wheelOption').forEach(el=>el.remove());
+  const allTools = Object.keys(TOOL_DEF);
+  const n = allTools.length;
+  const radius = 92;
+  allTools.forEach((key,i)=>{
+    const angle = (i/n)*2*Math.PI - Math.PI/2;
+    const x = Math.cos(angle)*radius;
+    const y = Math.sin(angle)*radius;
+    const owned = player.owned[key];
+    const btn = document.createElement('div');
+    btn.className = 'wheelOption' + (player.tool===key?' active':'') + (!owned?' locked':'');
+    btn.style.left = `calc(50% + ${x}px - 32px)`;
+    btn.style.top = `calc(50% + ${y}px - 32px)`;
+    btn.innerHTML = `${WEAPON_ICON[key]}<span>${owned?TOOL_DEF[key].nama:'Terkunci'}</span>`;
+    if(owned){
+      btn.addEventListener('click', ()=>{ switchTool(key); closeWeaponWheel(); });
+    }
+    inner.appendChild(btn);
+  });
+  document.getElementById('weaponWheel').classList.add('open');
+}
+function closeWeaponWheel(){ document.getElementById('weaponWheel').classList.remove('open'); }
+document.getElementById('weaponBtn').addEventListener('click', openWeaponWheel);
+document.getElementById('weaponWheel').addEventListener('click', (e)=>{
+  if(e.target.id==='weaponWheel') closeWeaponWheel();
+});
+
+/* ===== Touch controls (mobile) ===== */
+const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints>0;
+if(isTouch){
+  document.getElementById('touchControls').style.display='block';
+  const base = document.getElementById('joyBase');
+  const stick = document.getElementById('joyStick');
+  let joyActive=false, joyId=null, baseRect;
+  base.addEventListener('touchstart', e=>{
+    joyActive=true; joyId=e.changedTouches[0].identifier; baseRect=base.getBoundingClientRect(); e.preventDefault();
+  }, {passive:false});
+  window.addEventListener('touchmove', e=>{
+    if(!joyActive) return;
+    for(const t of e.changedTouches){
+      if(t.identifier!==joyId) continue;
+      const cx=baseRect.left+baseRect.width/2, cy=baseRect.top+baseRect.height/2;
+      let dx=t.clientX-cx, dy=t.clientY-cy;
+      const maxR=40; const l=Math.hypot(dx,dy);
+      if(l>maxR){ dx=dx/l*maxR; dy=dy/l*maxR; }
+      stick.style.left = 35+dx+'px'; stick.style.top = 35+dy+'px';
+      touchVec = { x: dx/maxR, y: dy/maxR };
+      e.preventDefault();
+    }
+  }, {passive:false});
+  window.addEventListener('touchend', e=>{
+    for(const t of e.changedTouches){
+      if(t.identifier===joyId){ joyActive=false; touchVec={x:0,y:0}; stick.style.left='35px'; stick.style.top='35px'; }
+    }
+  });
+  document.getElementById('btnHarvest').addEventListener('touchstart', e=>{ keys.interact=true; e.preventDefault(); });
+  document.getElementById('btnHarvest').addEventListener('touchend', e=>{ keys.interact=false; });
+  document.getElementById('btnAttack').addEventListener('touchstart', e=>{ attackQueued=true; e.preventDefault(); });
+  document.getElementById('btnCraft').addEventListener('touchstart', e=>{ toggleCraft(); e.preventDefault(); });
+  document.getElementById('btnEat').addEventListener('touchstart', e=>{ eatFood(); e.preventDefault(); });
+}
+
+/* ===================== LOG & FLOAT TEXT ===================== */
+const logEl = document.getElementById('log');
+function log(msg){
+  const d = document.createElement('div');
+  d.textContent = msg;
+  logEl.prepend(d);
+  while(logEl.children.length>6) logEl.removeChild(logEl.lastChild);
+  setTimeout(()=>{ if(d.parentNode) d.style.opacity='0'; setTimeout(()=>d.remove(),400); }, 4500);
+}
+function spawnFloatText(x,y,text,color){
+  floatTexts.push({x,y,text,color:color||'#e9e2d0', life:0.9, vy:-0.8});
+}
+
+/* ===================== XP / LEVEL ===================== */
+function gainXp(amount){
+  player.xp += amount;
+  while(player.xp >= player.xpNext){
+    player.xp -= player.xpNext;
+    player.level++;
+    player.hpMax = 100 + (player.level-1)*12;
+    player.stamMax = 100 + (player.level-1)*6;
+    player.hp = player.hpMax; player.stam = player.stamMax;
+    player.xpNext = Math.round(40*Math.pow(player.level,1.45));
+    log(`✦ Naik ke Level ${player.level}! Nyawa maks, stamina, & kapasitas bawaan meningkat.`);
+    playTone(760,0.25,'levelup');
+  }
+}
+
+/* ===================== WAKTU / SIKLUS HARI-MALAM ===================== */
+let gameTime = 0;
+const DAY_LENGTH = 300; // detik per siklus penuh
+function timeInfo(){
+  const dayFrac = (gameTime % DAY_LENGTH) / DAY_LENGTH;
+  const isNight = dayFrac >= 0.5;
+  let brightness;
+  if(!isNight){ brightness = 0.35 + 0.65*Math.sin((dayFrac/0.5)*Math.PI); }
+  else { const t=(dayFrac-0.5)/0.5; brightness = 0.30 - 0.16*Math.sin(t*Math.PI); }
+  const hour = Math.floor(dayFrac*24);
+  const minute = Math.floor((dayFrac*24*60)%60);
+  const dayNum = Math.floor(gameTime/DAY_LENGTH)+1;
+  return { dayFrac, isNight, brightness: clamp(brightness,0.12,1), hour, minute, dayNum };
+}
+
+/* ===================== HARVEST STATE ===================== */
+let harvestTarget = null;
+let harvestProgress = 0;
+
+function findNearestNode(){
+  let best=null, bestD=1.5;
+  for(const chunk of activeChunks()){
+    for(const node of chunk.nodes){
+      if(node.depleted) continue;
+      const d = dist(player,node);
+      if(d < bestD){ bestD=d; best=node; }
+    }
+  }
+  return best;
+}
+
+function activeChunks(){
+  const list = [];
+  const pcx = chunkOf(player.x), pcy = chunkOf(player.y);
+  for(let dx=-RENDER_RADIUS_CHUNKS; dx<=RENDER_RADIUS_CHUNKS; dx++){
+    for(let dy=-RENDER_RADIUS_CHUNKS; dy<=RENDER_RADIUS_CHUNKS; dy++){
+      list.push(getOrGenChunk(pcx+dx, pcy+dy));
+    }
+  }
+  return list;
+}
+
+function doHarvest(dt){
+  const node = findNearestNode();
+  if(keys.interact && node){
+    harvestTarget = node;
+    const toolDef = TOOL_DEF[player.tool];
+    const boosted = toolDef.boost === RESOURCE_DEF[node.type].hasil;
+    const mult = boosted ? toolDef.harvestMult : 1;
+    harvestProgress += dt * mult / RESOURCE_DEF[node.type].waktu;
+    document.getElementById('harvestbar').style.display='block';
+    document.getElementById('harvestbar').style.left = '50%';
+    document.getElementById('harvestbar').style.top = '58%';
+    document.getElementById('harvestfill').style.width = Math.min(100,harvestProgress*100)+'%';
+    if(harvestProgress >= 1){
+      const def = RESOURCE_DEF[node.type];
+      const amt = randInt(def.jumlah[0], def.jumlah[1]);
+      player.inv[def.hasil] += amt;
+      node.hp -= 1;
+      gainXp(2);
+      spawnFloatText(node.x, node.y, `+${amt} ${RES_ICON[def.hasil]}`, '#e8823c');
+      playTone(300,0.08,'loot');
+      harvestProgress = 0;
+      if(node.hp<=0){
+        node.depleted = true;
+        node.depletedAt = gameTime;
+        log(`${def.nama} habis. Akan tumbuh kembali seiring waktu.`);
+      }
+      updateInvUI();
+    }
+  } else {
+    harvestProgress = 0;
+    harvestTarget = null;
+    document.getElementById('harvestbar').style.display='none';
+  }
+  // respawn check
+  for(const chunk of activeChunks()){
+    for(const node of chunk.nodes){
+      if(node.depleted && gameTime - node.depletedAt > RESPAWN_TIME){
+        node.depleted = false;
+        node.hp = node.hpMax;
+      }
+    }
+  }
+}
+
+/* ===================== KOMBAT ===================== */
+function playerAttack(){
+  if(player.attackCooldown > 0 || player.stam < 5) return;
+  const toolDef = TOOL_DEF[player.tool];
+  player.stam -= 5;
+  player.attackCooldown = player.tool==='tombak' ? 0.55 : 0.72;
+  let hitAny=false;
+  for(const e of enemies){
+    if(dist(player,e) <= toolDef.range + (ENEMY_DEF[e.defKey].r||0.3)){
+      const dmg = toolDef.dmg * (0.85+Math.random()*0.3);
+      e.hp -= dmg;
+      const dir = norm(e.x-player.x, e.y-player.y);
+      e.vx += dir.x * (player.tool==='tombak'?3.5:5.5);
+      e.vy += dir.y * (player.tool==='tombak'?3.5:5.5);
+      e.state='alert'; e.aggro=true;
+      spawnFloatText(e.x,e.y-0.4,`-${Math.round(dmg)}`,'#ff8866');
+      hitAny=true;
+      if(e.hp<=0) killEnemy(e);
+    }
+  }
+  if(hitAny) playTone(160,0.12,'hit'); else playTone(220,0.08,'swing');
+}
+function killEnemy(e){
+  const def = ENEMY_DEF[e.defKey];
+  for(const res in def.loot){
+    const [a,b] = def.loot[res];
+    const amt = randInt(a,b);
+    if(amt>0) player.inv[res] += amt;
+  }
+  gainXp(def.xp);
+  log(`${e.defKey[0].toUpperCase()+e.defKey.slice(1)} dikalahkan. +${def.xp} XP.`);
+  updateInvUI();
+  e.dead = true;
+}
+function damagePlayer(dmg, source){
+  if(player.dead) return;
+  player.hp -= dmg;
+  player.lastDamageTime = gameTime;
+  spawnFloatText(player.x,player.y-0.5,`-${Math.round(dmg)}`,'#ff4444');
+  if(source){
+    const dir = norm(player.x-source.x, player.y-source.y);
+    player.vx += dir.x*4; player.vy += dir.y*4;
+  }
+  playTone(120,0.15,'hit');
+  if(player.hp<=0){ player.hp=0; onPlayerDeath(); }
+}
+
+/* ===================== MUSUH / HEWAN ===================== */
+function spawnEnemy(type, x, y){
+  if(enemies.length >= MAX_ENEMIES) return;
+  enemies.push({
+    id: entityIdCounter++, defKey:type, x, y, vx:0, vy:0,
+    hp: ENEMY_DEF[type].hp, hpMax: ENEMY_DEF[type].hp,
+    state:'idle', wanderTarget:null, wanderTimer:0, atkTimer:0, dead:false,
+  });
+}
+function updateEnemies(dt){
+  const t = timeInfo();
+  for(const e of enemies){
+    if(e.dead) continue;
+    const def = ENEMY_DEF[e.defKey];
+    const dPlayer = dist(e, player);
+    if(def.passive){
+      e.state = dPlayer < def.detect ? 'flee' : 'idle';
+    } else {
+      if(dPlayer < def.detect) e.state = dPlayer <= def.atkRange ? 'attack' : 'alert';
+      else if(e.state!=='idle' && dPlayer > def.detect*1.7) e.state='idle';
+    }
+    let dir = {x:0,y:0};
+    if(e.state==='flee'){
+      dir = norm(e.x-player.x, e.y-player.y);
+    } else if(e.state==='alert' || e.state==='attack'){
+      if(def.ranged && dPlayer < 7.5 && dPlayer > 2.5) dir={x:0,y:0};
+      else dir = norm(player.x-e.x, player.y-e.y);
+    } else {
+      e.wanderTimer -= dt;
+      if(e.wanderTimer<=0 || !e.wanderTarget){
+        e.wanderTarget = { x:e.x+(Math.random()-0.5)*7, y:e.y+(Math.random()-0.5)*7 };
+        e.wanderTimer = 2+Math.random()*3;
+      }
+      dir = norm(e.wanderTarget.x-e.x, e.wanderTarget.y-e.y);
+    }
+    const accel = 11;
+    e.vx += dir.x*accel*dt; e.vy += dir.y*accel*dt;
+    const sp = Math.hypot(e.vx,e.vy);
+    const maxSp = def.speed * (e.state==='flee'?1.2:1);
+    if(sp > maxSp){ e.vx = e.vx/sp*maxSp; e.vy = e.vy/sp*maxSp; }
+    if(dir.x===0 && dir.y===0){ e.vx*=0.86; e.vy*=0.86; }
+    e.x += e.vx*dt; e.y += e.vy*dt;
+
+    if(e.state==='attack'){
+      e.atkTimer -= dt;
+      if(e.atkTimer<=0){
+        if(def.ranged) spawnProjectile(e);
+        else damagePlayer(def.dmg, e);
+        e.atkTimer = def.cd;
+      }
+    }
+    if(e.hp<=0 && !e.dead) killEnemy(e);
+  }
+  enemies = enemies.filter(e=>!e.dead && dist(e,player) < CHUNK_M*(RENDER_RADIUS_CHUNKS+1.5));
+
+  // spawn logic
+  spawnTick -= dt;
+  if(spawnTick<=0){
+    spawnTick = 2.2 + Math.random()*1.2;
+    for(const chunk of activeChunks()){
+      for(const sp of chunk.spawners){
+        const info = BIOME_HOSTILE[chunk.biome];
+        const nightMult = t.isNight? 2.1:1;
+        const inTerr = nearestPostBonus(sp.x, sp.y);
+        const chance = info.chance * nightMult * (inTerr? 0.18:1) * 0.35;
+        if(Math.random() < chance){
+          const type = pick(info.types);
+          if(ENEMY_DEF[type].pack && Math.random()<0.5){
+            const n = randInt(2,3);
+            for(let i=0;i<n;i++) spawnEnemy(type, sp.x+(Math.random()-0.5)*3, sp.y+(Math.random()-0.5)*3);
+          } else spawnEnemy(type, sp.x, sp.y);
+        }
+      }
+      // passive ambient
+      if(Math.random() < (t.isNight?0.02:0.05) && enemies.length<MAX_ENEMIES){
+        const passives = BIOME_PASSIVE[chunk.biome];
+        if(passives){
+          const type = pick(passives);
+          spawnEnemy(type, chunk.cx*CHUNK_M+Math.random()*CHUNK_M, chunk.cy*CHUNK_M+Math.random()*CHUNK_M);
+        }
+      }
+    }
+  }
+}
+let spawnTick = 2;
+
+function spawnProjectile(e){
+  const dir = norm(player.x-e.x, player.y-e.y);
+  projectiles.push({ x:e.x, y:e.y, vx:dir.x*9, vy:dir.y*9, life:2.2, dmg: ENEMY_DEF[e.defKey].dmg*0.75 });
+}
+function updateProjectiles(dt){
+  for(const p of projectiles){
+    p.x += p.vx*dt; p.y += p.vy*dt; p.life -= dt;
+    if(dist(p,player) < 0.5){ damagePlayer(p.dmg, p); p.life=0; }
+  }
+  projectiles = projectiles.filter(p=>p.life>0);
+}
+
+/* ===================== POS WILAYAH & STRUKTUR ===================== */
+function haveResources(cost){
+  for(const k in cost) if((player.inv[k]||0) < cost[k]) return false;
+  return true;
+}
+function spendResources(cost){
+  for(const k in cost) player.inv[k] -= cost[k];
+  updateInvUI();
+}
+function placePost(){
+  const cost = {kayu:12, batu:12};
+  if(!haveResources(cost)){ log('Butuh 12 Kayu & 12 Batu untuk Pos Wilayah.'); return; }
+  for(const p of posts){ if(dist(p,player) < p.radius*1.3){ log('Terlalu dekat dengan pos lain.'); return; } }
+  spendResources(cost);
+  posts.push({ x:player.x, y:player.y, level:1, radius:6, durMax:100, dur:100 });
+  log('🚩 Pos Wilayah didirikan! Wilayahmu meluas.');
+  playTone(500,0.2,'levelup');
+  updateTerrUI();
+}
+function craftItem(id){
+  const recipe = RECIPES.find(r=>r.id===id);
+  if(!recipe) return;
+  if(!haveResources(recipe.cost)){ log('Sumber daya tidak cukup.'); return; }
+  spendResources(recipe.cost);
+  if(recipe.type==='tool'){
+    player.owned[id] = true; player.tool = id;
+    document.getElementById('weaponBtnLabel').textContent = TOOL_DEF[id].nama;
+    log(`Berhasil membuat ${recipe.nama}.`);
+  } else if(id==='apiUnggun'){
+    structures.push({ type:'api', x:player.x, y:player.y });
+    log('🔥 Api Unggun didirikan. Masak daging di dekatnya untuk gizi lebih baik.');
+  } else if(id==='pos'){
+    placePostAt();
+  }
+  playTone(440,0.15,'levelup');
+  renderCraftMenu();
+  updateInvUI();
+}
+function placePostAt(){
+  posts.push({ x:player.x, y:player.y, level:1, radius:6, durMax:100, dur:100 });
+  updateTerrUI();
+}
+function nearFire(){ return structures.some(s=>s.type==='api' && dist(s,player)<3); }
+function eatFood(){
+  if(player.inv.dagingMasak>0){ player.inv.dagingMasak--; player.hunger=Math.min(100,player.hunger+32); log('Memakan daging matang. +32 Lapar.'); }
+  else if(player.inv.daging>0){ player.inv.daging--; player.hunger=Math.min(100,player.hunger+14); log('Memakan daging mentah. +14 Lapar.'); }
+  else if(player.inv.herba>0){ player.inv.herba--; player.hp=Math.min(player.hpMax,player.hp+8); player.hunger=Math.min(100,player.hunger+4); log('Mengunyah herbal liar. +8 Nyawa.'); }
+  else { log('Tidak ada makanan di inventaris.'); return; }
+  updateInvUI();
+}
+// masak otomatis saat dekat api & tekan Q ganda? sederhanakan: cooking via crafting-like action E near fire converts 1 daging/detik
+function updateCooking(dt){
+  if(nearFire() && player.inv.daging>0 && keys.interact === false){
+    // pasif tidak masak otomatis; biarkan manual lewat tombol masak di menu crafting sederhana:
+  }
+}
+function cookNow(){
+  if(!nearFire()){ log('Harus dekat Api Unggun untuk memasak.'); return; }
+  if(player.inv.daging<=0){ log('Tidak ada daging mentah.'); return; }
+  player.inv.daging--; player.inv.dagingMasak++;
+  log('Daging dimasak jadi lebih bergizi.');
+  updateInvUI();
+}
+
+/* ===================== KEMATIAN & RESTART ===================== */
+function onPlayerDeath(){
+  player.dead = true;
+  const overlay = document.getElementById('overlay');
+  overlay.classList.remove('hidden');
+  document.getElementById('overlay').innerHTML = `
+    <h1 style="color:#c0392b;">KAU TUMBANG</h1>
+    <p class="tagline">Alam liar tak kenal ampun. Berikut jejak perjalananmu:</p>
+    <div class="info-grid">
+      <div class="info-card plank-panel"><h3>LEVEL DICAPAI</h3><p style="font-size:20px;color:#e9e2d0;">${player.level}</p></div>
+      <div class="info-card plank-panel"><h3>HARI BERTAHAN</h3><p style="font-size:20px;color:#e9e2d0;">${timeInfo().dayNum}</p></div>
+      <div class="info-card plank-panel"><h3>POS WILAYAH</h3><p style="font-size:20px;color:#e9e2d0;">${posts.length}</p></div>
+      <div class="info-card plank-panel"><h3>MUSUH DIKALAHKAN</h3><p style="font-size:20px;color:#e9e2d0;">${killCount}</p></div>
+    </div>
+    <button id="restartBtn">MULAI LAGI</button>
+  `;
+  document.getElementById('restartBtn').addEventListener('click', ()=>window.location.reload());
+}
+let killCount=0;
+
+/* ===================== UPDATE PLAYER FISIKA ===================== */
+function updatePlayer(dt){
+  if(player.dead) return;
+  let ix = (keys.right?1:0) - (keys.left?1:0) + touchVec.x;
+  let iy = (keys.down?1:0) - (keys.up?1:0) + touchVec.y;
+  const inputLen = Math.hypot(ix,iy);
+  if(inputLen>1){ ix/=inputLen; iy/=inputLen; }
+  const moving = inputLen > 0.05;
+
+  const weight = totalWeight(), cap = capacity();
+  const overweight = weight > cap;
+  const overMult = overweight ? Math.max(0.35, cap/weight) : 1;
+  const canSprint = keys.sprint && player.stam > 2 && weight < cap*1.5;
+  const baseSpeed = 3.4;
+  const maxSpeed = baseSpeed * (canSprint?1.8:1) * overMult;
+  const accelPower = 19;
+
+  if(moving){
+    player.vx += ix*accelPower*dt;
+    player.vy += iy*accelPower*dt;
+    player.facing = {x:ix,y:iy};
+  }
+  const sp = Math.hypot(player.vx, player.vy);
+  if(sp > maxSpeed){ player.vx = player.vx/sp*maxSpeed; player.vy = player.vy/sp*maxSpeed; }
+  if(!moving){
+    const drag = Math.max(0, 1 - 9*dt);
+    player.vx *= drag; player.vy *= drag;
+    if(Math.hypot(player.vx,player.vy) < 0.04){ player.vx=0; player.vy=0; }
+  }
+  player.x += player.vx*dt;
+  player.y += player.vy*dt;
+
+  // stamina
+  if(canSprint && moving){
+    player.stam -= 14*dt*(overweight?1.6:1);
+  } else {
+    const regenMult = player.hunger<30 ? 0.4 : 1;
+    const campBonus = nearestPostBonus(player.x,player.y) ? 1.5 : 1;
+    player.stam = Math.min(player.stamMax, player.stam + 9*dt*regenMult*campBonus);
+  }
+  player.stam = clamp(player.stam, 0, player.stamMax);
+
+  // hunger & regen nyawa
+  player.hunger = clamp(player.hunger - 0.14*dt, 0, 100);
+  if(player.hunger<=0){
+    player.hp -= 2.2*dt;
+  } else if(player.hunger>55 && (gameTime-player.lastDamageTime>6)){
+    const campBonus = nearestPostBonus(player.x,player.y) ? 1.5 : 1;
+    player.hp = Math.min(player.hpMax, player.hp + 1.4*dt*campBonus);
+  }
+  player.hp = clamp(player.hp, 0, player.hpMax);
+  if(player.hp<=0) onPlayerDeath();
+
+  if(player.attackCooldown>0) player.attackCooldown -= dt;
+  if(attackQueued){ playerAttack(); attackQueued=false; }
+}
+
+/* ===================== UI SYNC ===================== */
+function dropResource(key, amount){
+  const have = player.inv[key];
+  if(have<=0) return;
+  const drop = Math.min(have, amount);
+  player.inv[key] -= drop;
+  log(`Membuang ${drop} ${RES_ICON[key]} ${key}.`);
+  updateInvUI();
+}
+function updateInvUI(){
+  const bar = document.getElementById('invbar');
+  bar.innerHTML='';
+  for(const key of RESOURCE_ORDER){
+    const amt = player.inv[key];
+    const slot = document.createElement('div');
+    slot.className='slot';
+    slot.innerHTML = `<span class="wlabel">${key}</span>${RES_ICON[key]}<span class="count">${amt}</span>`
+      + (amt>0 ? `<button class="dropBtn" title="Buang 1">−</button><button class="dropAllBtn" title="Buang semua">✕</button>` : '');
+    if(amt>0){
+      slot.querySelector('.dropBtn').addEventListener('click', (ev)=>{ ev.stopPropagation(); dropResource(key,1); });
+      slot.querySelector('.dropAllBtn').addEventListener('click', (ev)=>{ ev.stopPropagation(); dropResource(key,amt); });
+    }
+    bar.appendChild(slot);
+  }
+  document.getElementById('weight-text').textContent = `${totalWeight().toFixed(1)}/${capacity().toFixed(1)} kg`;
+}
+function updateTerrUI(){
+  const area = posts.reduce((s,p)=>s+Math.PI*p.radius*p.radius,0);
+  document.getElementById('terrinfo').textContent = `${posts.length} pos · ~${Math.round(area)} m²`;
+}
+function updateStatsUI(){
+  document.getElementById('lvl-badge').textContent = `Lv. ${player.level}`;
+  document.getElementById('xp-label').textContent = `${Math.floor(player.xp)}/${player.xpNext} XP`;
+  document.getElementById('bar-xp').style.width = clamp(player.xp/player.xpNext*100,0,100)+'%';
+  document.getElementById('hp-text').textContent = `${Math.ceil(player.hp)}/${player.hpMax}`;
+  document.getElementById('bar-hp').style.width = clamp(player.hp/player.hpMax*100,0,100)+'%';
+  document.getElementById('bar-hp').classList.toggle('low', player.hp/player.hpMax<0.3);
+  document.getElementById('stam-text').textContent = `${Math.ceil(player.stam)}/${player.stamMax}`;
+  document.getElementById('bar-stam').style.width = clamp(player.stam/player.stamMax*100,0,100)+'%';
+  document.getElementById('hunger-text').textContent = `${Math.ceil(player.hunger)}`;
+  document.getElementById('bar-hunger').style.width = clamp(player.hunger,0,100)+'%';
+
+  const t = timeInfo();
+  document.getElementById('clock').textContent = `Hari ${t.dayNum} · ${String(t.hour).padStart(2,'0')}:${String(t.minute).padStart(2,'0')} ${t.isNight?'🌙':'☀️'}`;
+  document.getElementById('posx').textContent = player.x.toFixed(1)+' m';
+  document.getElementById('posy').textContent = player.y.toFixed(1)+' m';
+  document.getElementById('poschunk').textContent = `(${chunkOf(player.x)}, ${chunkOf(player.y)})`;
+}
+
+/* ===================== CRAFTING MENU ===================== */
+const craftMenuEl = document.getElementById('craftMenu');
+function toggleCraft(){
+  craftMenuEl.style.display = craftMenuEl.style.display==='flex' ? 'none' : 'flex';
+  if(craftMenuEl.style.display==='flex') renderCraftMenu();
+}
+document.getElementById('closeCraft').addEventListener('click', ()=>craftMenuEl.style.display='none');
+function renderCraftMenu(){
+  const list = document.getElementById('recipeList');
+  list.innerHTML='';
+  for(const r of RECIPES){
+    const owned = r.type==='tool' && player.owned[r.id];
+    const row = document.createElement('div');
+    row.className = 'recipe'+(owned?' owned':'');
+    const costStr = Object.entries(r.cost).map(([k,v])=>`${v} ${RES_ICON[k]}`).join(' + ');
+    const canAfford = haveResources(r.cost);
+    row.innerHTML = `<div><div class="rname">${r.nama}</div><div class="rcost">${costStr}</div></div>
+      <button ${(!canAfford&&!owned)?'disabled':''}>${owned?'Dimiliki':'Buat'}</button>`;
+    if(!owned){
+      row.querySelector('button').addEventListener('click', ()=>craftItem(r.id));
+    }
+    list.appendChild(row);
+  }
+  // tombol masak khusus
+  const cookRow = document.createElement('div');
+  cookRow.className='recipe';
+  cookRow.innerHTML = `<div><div class="rname">Masak Daging</div><div class="rcost">1 🥩 → 1 🍖 (dekat api unggun)</div></div><button>Masak</button>`;
+  cookRow.querySelector('button').addEventListener('click', cookNow);
+  list.appendChild(cookRow);
+}
+
+/* ===================== RENDER ===================== */
+function worldToScreen(x,y){
+  return { x: (x-player.x)*TILE + canvas.width/2, y: (y-player.y)*TILE + canvas.height/2 };
+}
+function drawEntityShadow(sx,sy,r){
+  ctx.beginPath(); ctx.ellipse(sx, sy+r*0.7, r*1.1, r*0.4, 0,0,Math.PI*2);
+  ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fill();
+}
+function drawHpBar(sx,sy,frac,w){
+  ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(sx-w/2, sy, w, 4);
+  ctx.fillStyle = frac>0.5? '#7a9b4e' : frac>0.25? '#d9b44a':'#c0392b';
+  ctx.fillRect(sx-w/2, sy, w*clamp(frac,0,1), 4);
+}
+
+const WEAPON_HANDHELD_COLOR = { tangan:null, kapak:'#8a8a8a', beliung:'#9a9a9a', tombak:'#7a5a30' };
+function drawPlayerPerson(){
+  const s = worldToScreen(player.x, player.y);
+  drawEntityShadow(s.x, s.y, 14);
+  const speed = Math.hypot(player.vx, player.vy);
+  const moving = speed > 0.15;
+  const walk = moving ? Math.sin(gameTime*9.5) : 0;
+  const angle = Math.atan2(player.facing.y, player.facing.x);
+
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.rotate(angle);
+  // local +x = arah hadap (depan), local +y = sisi kanan tubuh
+
+  // kaki (beranimasi gantian saat jalan)
+  ctx.fillStyle = '#2e2418';
+  ctx.beginPath(); ctx.ellipse(-6, walk*4.5, 4, 6.5, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-6, -walk*4.5, 4, 6.5, 0, 0, Math.PI*2); ctx.fill();
+
+  // lengan (di sisi badan, ayun berlawanan dengan kaki)
+  ctx.fillStyle = '#a85a2a';
+  ctx.beginPath(); ctx.ellipse(1, 10 - walk*2, 3.5, 6, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(1, -10 + walk*2, 3.5, 6, 0, 0, Math.PI*2); ctx.fill();
+
+  // senjata/alat yang dipegang, terjulur ke depan dari tangan kanan
+  const wCol = WEAPON_HANDHELD_COLOR[player.tool];
+  if(wCol){
+    ctx.strokeStyle = wCol; ctx.lineWidth = player.tool==='tombak'?2.5:4;
+    ctx.beginPath(); ctx.moveTo(3, 10-walk*2); ctx.lineTo(16, 10-walk*2); ctx.stroke();
+    if(player.tool==='tombak'){
+      ctx.fillStyle='#c9c9c9';
+      ctx.beginPath(); ctx.moveTo(16,10-walk*2-2); ctx.lineTo(21,10-walk*2); ctx.lineTo(16,10-walk*2+2); ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // badan / torso (baju)
+  ctx.fillStyle = '#c47a3a';
+  ctx.beginPath(); ctx.ellipse(0, 0, 8, 9.5, 0, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#241407'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // kepala
+  ctx.fillStyle = '#e0b48a';
+  ctx.beginPath(); ctx.arc(9, 0, 6.2, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#241407'; ctx.lineWidth = 1.2; ctx.stroke();
+  // arah pandang (mata kecil di sisi depan kepala)
+  ctx.fillStyle = '#241407';
+  ctx.beginPath(); ctx.arc(11.5, -2, 1, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(11.5, 2, 1, 0, Math.PI*2); ctx.fill();
+
+  ctx.restore();
+}
+
+function render(){
+  const t = timeInfo();
+  ctx.fillStyle = '#0a0f0a';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  const pcx = chunkOf(player.x), pcy = chunkOf(player.y);
+  // gambar chunk & dekorasi
+  for(let dx=-RENDER_RADIUS_CHUNKS; dx<=RENDER_RADIUS_CHUNKS; dx++){
+    for(let dy=-RENDER_RADIUS_CHUNKS; dy<=RENDER_RADIUS_CHUNKS; dy++){
+      const chunk = getOrGenChunk(pcx+dx, pcy+dy);
+      const topLeft = worldToScreen(chunk.cx*CHUNK_M, chunk.cy*CHUNK_M);
+      const size = CHUNK_M*TILE;
+      ctx.fillStyle = BIOME_COLOR[chunk.biome];
+      ctx.fillRect(topLeft.x, topLeft.y, size+1, size+1);
+      ctx.fillStyle = BIOME_DECOR_COLOR[chunk.biome];
+      for(const d of chunk.decor){
+        const s = worldToScreen(d.x,d.y);
+        ctx.beginPath(); ctx.arc(s.x,s.y, d.r*TILE*0.12, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
+  // wilayah (territory circles)
+  for(const p of posts){
+    const s = worldToScreen(p.x,p.y);
+    ctx.beginPath(); ctx.arc(s.x,s.y,p.radius*TILE,0,Math.PI*2);
+    ctx.fillStyle='rgba(90,138,90,.12)'; ctx.fill();
+    ctx.strokeStyle='rgba(90,138,90,.5)'; ctx.lineWidth=2; ctx.stroke();
+    ctx.font='18px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('🚩', s.x, s.y+6);
+  }
+  for(const st of structures){
+    const s = worldToScreen(st.x,st.y);
+    ctx.font='22px sans-serif'; ctx.textAlign='center'; ctx.fillText('🔥', s.x, s.y+8);
+  }
+
+  // resource nodes
+  for(let dx=-RENDER_RADIUS_CHUNKS; dx<=RENDER_RADIUS_CHUNKS; dx++){
+    for(let dy=-RENDER_RADIUS_CHUNKS; dy<=RENDER_RADIUS_CHUNKS; dy++){
+      const chunk = getOrGenChunk(pcx+dx, pcy+dy);
+      for(const node of chunk.nodes){
+        if(node.depleted) continue;
+        const s = worldToScreen(node.x,node.y);
+        if(s.x<-40||s.x>canvas.width+40||s.y<-40||s.y>canvas.height+40) continue;
+        ctx.font = (node.type==='pohon'?'30px':'22px')+' sans-serif';
+        ctx.textAlign='center';
+        ctx.fillText(NODE_ICON[node.type], s.x, s.y);
+        if(harvestTarget===node){
+          drawHpBar(s.x, s.y+8, harvestProgress, 30);
+        }
+      }
+    }
+  }
+
+  // proyektil
+  for(const p of projectiles){
+    const s = worldToScreen(p.x,p.y);
+    ctx.beginPath(); ctx.arc(s.x,s.y,4,0,Math.PI*2); ctx.fillStyle='#7a6a4a'; ctx.fill();
+  }
+
+  // musuh & hewan
+  for(const e of enemies){
+    const def = ENEMY_DEF[e.defKey];
+    const s = worldToScreen(e.x,e.y);
+    if(s.x<-60||s.x>canvas.width+60||s.y<-60||s.y>canvas.height+60) continue;
+    const r = def.r*TILE;
+    drawEntityShadow(s.x,s.y,r*0.8);
+    ctx.beginPath(); ctx.arc(s.x,s.y,r,0,Math.PI*2);
+    ctx.fillStyle = def.warna; ctx.fill();
+    ctx.strokeStyle = e.state==='attack'||e.state==='alert' ? '#c0392b':'rgba(0,0,0,.4)';
+    ctx.lineWidth=2; ctx.stroke();
+    drawHpBar(s.x, s.y-r-10, e.hp/e.hpMax, r*2.2);
+  }
+
+  // pemain — digambar sebagai sosok orang (bukan lingkaran polos), tampak dari atas
+  drawPlayerPerson();
+
+  // float text
+  for(const f of floatTexts){
+    const s = worldToScreen(f.x, f.y);
+    ctx.globalAlpha = clamp(f.life/0.9,0,1);
+    ctx.fillStyle = f.color; ctx.font='bold 13px monospace'; ctx.textAlign='center';
+    ctx.fillText(f.text, s.x, s.y);
+    ctx.globalAlpha = 1;
+  }
+
+  // overlay gelap malam
+  if(t.brightness < 1){
+    ctx.fillStyle = `rgba(4,6,12,${(1-t.brightness)*0.72})`;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    if(t.isNight){
+      const grad = ctx.createRadialGradient(canvas.width/2,canvas.height/2,60,canvas.width/2,canvas.height/2,canvas.width*0.6);
+      grad.addColorStop(0,'rgba(232,130,60,0.08)');
+      grad.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle = grad; ctx.fillRect(0,0,canvas.width,canvas.height);
+    }
+  }
+
+  renderMinimap();
+}
+
+function renderMinimap(){
+  mctx.clearRect(0,0,150,150);
+  mctx.save();
+  mctx.beginPath(); mctx.arc(75,75,73,0,Math.PI*2); mctx.clip();
+  mctx.fillStyle='#0d1410'; mctx.fillRect(0,0,150,150);
+  const scale = 150/(CHUNK_M*7); // tampilkan radius ~3.5 chunk
+  function w2m(x,y){ return { x:75+(x-player.x)*scale, y:75+(y-player.y)*scale }; }
+  for(const chunk of activeChunks()){
+    const topLeft = w2m(chunk.cx*CHUNK_M, chunk.cy*CHUNK_M);
+    mctx.fillStyle = BIOME_COLOR[chunk.biome];
+    mctx.fillRect(topLeft.x, topLeft.y, CHUNK_M*scale+1, CHUNK_M*scale+1);
+  }
+  for(const p of posts){
+    const s = w2m(p.x,p.y);
+    mctx.beginPath(); mctx.arc(s.x,s.y,p.radius*scale,0,Math.PI*2);
+    mctx.strokeStyle='rgba(90,138,90,.8)'; mctx.stroke();
+  }
+  for(const e of enemies){
+    const s = w2m(e.x,e.y);
+    mctx.fillStyle = ENEMY_DEF[e.defKey].passive ? '#a9835a' : '#c0392b';
+    mctx.beginPath(); mctx.arc(s.x,s.y,2.4,0,Math.PI*2); mctx.fill();
+  }
+  mctx.fillStyle='#e8823c';
+  mctx.beginPath(); mctx.arc(75,75,4,0,Math.PI*2); mctx.fill();
+  mctx.restore();
+  mctx.strokeStyle='#4a3826'; mctx.lineWidth=2;
+  mctx.beginPath(); mctx.arc(75,75,73,0,Math.PI*2); mctx.stroke();
+}
+
+/* ===================== LOOP UTAMA ===================== */
+let lastTime = performance.now();
+let started = false;
+function frame(now){
+  const dt = Math.min(0.05, (now-lastTime)/1000);
+  lastTime = now;
+  if(started && !player.dead){
+    gameTime += dt;
+    updatePlayer(dt);
+    doHarvest(dt);
+    updateEnemies(dt);
+    updateProjectiles(dt);
+    for(const f of floatTexts){ f.y += f.vy*dt; f.life -= dt; }
+    floatTexts = floatTexts.filter(f=>f.life>0);
+    updateStatsUI();
+  }
+  render();
+  requestAnimationFrame(frame);
+}
+
+/* ===================== MULAI ===================== */
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  document.getElementById('overlay').classList.add('hidden');
+  started = true;
+  updateInvUI(); updateTerrUI();
+  log('Selamat datang di alam liar. Bertahanlah, jelajahi, dan kuasai wilayah.');
+});
+
+requestAnimationFrame(frame);
+updateInvUI();
+updateTerrUI();
+
+})();
+</script>
+</body>
+</html>
